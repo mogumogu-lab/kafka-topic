@@ -14,6 +14,12 @@ services:
       - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
       - ALLOW_PLAINTEXT_LISTENER=yes
+    healthcheck:
+      test: kafka-topics.sh --list --bootstrap-server localhost:9092
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   producer:
     image: node:24.6.0-alpine3.22
@@ -21,9 +27,12 @@ services:
     working_dir: /app
     volumes:
       - ./producer:/app
-    command: sh -c "corepack enable && pnpm install --no-frozen-lockfile && node index.js"
+    ports:
+      - "3001:3001" 
+    command: sh -c "corepack enable && pnpm install --no-frozen-lockfile && node index.js && tail -f /dev/null"
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
 
   consumer:
     image: node:24.6.0-alpine3.22
@@ -31,6 +40,9 @@ services:
     working_dir: /app
     volumes:
       - ./consumer:/app
-    command: sh -c "corepack enable && pnpm install --no-frozen-lockfile && node index.js"
+    ports:
+      - "3002:3002" 
+    command: sh -c "corepack enable && pnpm install --no-frozen-lockfile && node index.js && tail -f /dev/null"
     depends_on:
-      - kafka
+      kafka:
+        condition: service_healthy
